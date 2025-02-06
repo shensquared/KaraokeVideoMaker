@@ -4,39 +4,39 @@ Welcome to 6.390!
 
 1
 00:00:09,260 --> 00:00:13,160
-Jump into the learning where the algorithms group.
+Jump into the learning where the algorithms groove.
 
 2
 00:00:13,670 --> 00:00:17,899
 Supervised. Unsupervised. 
 
 3
-00:00:17,900 --> 00:00:22,320
+00:00:17,920 --> 00:00:22,320
 Let's find our rhythm and move on.
 
 4
 00:00:24,319 --> 00:00:24,320
-Let's dive into the data. Find the stories we can tell with six three nitinol knowledge.
+Let's dive into the data. Find the stories we can tell with six three-nine-oh knowledge.
 
 5
 00:00:24,320 --> 00:00:39,920
-We're under a machine learning spell. Linear, non-linear will dance through every way.
+We're under a machine learning spell. Linear, non-linear, we will dance through every way.
 
 6
 00:00:40,520 --> 00:00:46,700
-Gradient descent is our partner, taking us to sway from theory to the practice.
+Gradient descent is our partner, taking us to sway. From theory to the practice.
 
 6
 00:00:46,950 --> 00:00:51,240
-We'll navigate the scene in the land of algorithms.
+We'll navigate the scene. In the land of algorithms.
 
 7
 00:00:51,390 --> 00:00:55,420
-We'll build our dream machine. Oh, welcome to 630.
+We'll build our dream machine. Oh, welcome to 6390.
 
 8
 00:00:55,470 --> 00:01:02,130
-Gotta do where the excitement flows. With every model built, we're ready to break those codes.
+where the excitement flows, With every model built, we're ready to break those codes.
 
 9
 00:01:02,280 --> 00:01:06,570
