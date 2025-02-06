@@ -151,9 +151,9 @@ def draw_frame(i, time):
         write_centered(context, after_text, width / 2, height / 2 + 100)
 
     # Draw time bar
-    timebar_width = (end_line - time) / 5 * width / 2
+    # timebar_width = (end_line - time) / 5 * width / 2
     context.set_source_rgb(0, 0.3, 0.7)
-    context.rectangle(width / 2 - timebar_width, 10, 2 * timebar_width, 10)
+    # context.rectangle(width / 2 - timebar_width, 10, 2 * timebar_width, 10)
     context.fill()
 
     return get_npimage(surface, width, height)
