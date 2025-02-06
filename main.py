@@ -4,7 +4,6 @@ import moviepy.editor as mpy
 import argparse
 from PIL import Image
 import os
-import matplotlib.pyplot as plt  # For visual debugging
 
 # Argument parsing
 parser = argparse.ArgumentParser(
@@ -58,17 +57,10 @@ def write_centered(context, text, x, y):
     x_bearing, y_bearing, text_width, text_height, x_advance, y_advance = (
         context.text_extents(text)
     )
-    if text_width < width * 0.9:
-        x -= text_width / 2 + x_bearing
-        y -= text_height / 2 + y_bearing
-        context.move_to(x, y)
-        context.show_text(text)
-    else:
-        i_middle = len(text) // 2
-        cut_at = i_middle + text[i_middle:].find(" ")
-        string1, string2 = text[:cut_at], text[cut_at:]
-        write_centered(context, string1, x, y - text_height * 1.2)
-        write_centered(context, string2, x, y)
+    x -= text_width / 2 + x_bearing
+    y -= text_height / 2 + y_bearing
+    context.move_to(x, y)
+    context.show_text(text)
 
 
 def get_npimage(surface, width, height, transparent=False, y_origin="top"):
@@ -107,11 +99,6 @@ for root, _, files in os.walk(image_dir):
             except Exception as e:
                 print(f"Error loading image {file}: {e}")
 
-# Visualize loaded images for debugging
-# for img in background_images:
-#     plt.imshow(img)
-#     plt.show()
-
 
 def draw_frame(i, time):
     ((_, end_line), main_text) = relevant_lines[i]
@@ -121,18 +108,39 @@ def draw_frame(i, time):
     else:
         (start_next_line, _), after_text = relevant_lines[i + 1]
 
-    image_index = int((time / total_duration) * len(background_images))
-    image_index = min(image_index, len(background_images) - 1)
+    # Determine horizontal offset
+    total_images = len(background_images)
+    scroll_speed = width / (total_duration / total_images)
+    offset = -(scroll_speed * time % width)
 
-    img_buffer = background_images[image_index]
-    surface = cairo.ImageSurface.create_for_data(
-        img_buffer, cairo.FORMAT_ARGB32, width, height
-    )
+    current_image_index = int((time / total_duration) * total_images)
+    next_image_index = (current_image_index + 1) % total_images
 
+    # Create a surface for the current frame
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
     context = cairo.Context(surface)
-    context.set_source_surface(surface, 0, 0)
+
+    # Draw current image
+    current_image = background_images[current_image_index]
+    img_surf = cairo.ImageSurface.create_for_data(
+        current_image,
+        cairo.FORMAT_ARGB32,
+        current_image.shape[1],
+        current_image.shape[0],
+    )
+    context.set_source_surface(img_surf, offset, 0)
     context.paint()
 
+    # Draw next image if needed to fill the frame (for smooth transition)
+    if offset + current_image.shape[1] < width:
+        next_image = background_images[next_image_index]
+        next_img_surf = cairo.ImageSurface.create_for_data(
+            next_image, cairo.FORMAT_ARGB32, next_image.shape[1], next_image.shape[0]
+        )
+        context.set_source_surface(next_img_surf, offset + current_image.shape[1], 0)
+        context.paint()
+
+    # Draw text
     context.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
     context.set_source_rgb(1, 1, 1)
     context.set_font_size(50)
@@ -142,6 +150,7 @@ def draw_frame(i, time):
         context.set_font_size(25)
         write_centered(context, after_text, width / 2, height / 2 + 100)
 
+    # Draw time bar
     timebar_width = (end_line - time) / 5 * width / 2
     context.set_source_rgb(0, 0.3, 0.7)
     context.rectangle(width / 2 - timebar_width, 10, 2 * timebar_width, 10)
@@ -160,7 +169,6 @@ def get_frame_index(time):
 def build_frame(time):
     i_frame = get_frame_index(time)
     if i_frame is not None:
-        print(f"Rendering frame for time: {time}, using image index: {i_frame}")
         return draw_frame(i_frame, time)
     else:
         return blank_image
