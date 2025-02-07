@@ -8,15 +8,19 @@ Jump into the learning where the algorithms groove.
 
 2
 00:00:13,670 --> 00:00:17,899
-Supervised. Unsupervised. 
+Supervised, unsupervised, 
 
 3
 00:00:17,920 --> 00:00:22,320
-Let's find our rhythm and move on.
+let's find our rhythm and move!
 
 4
 00:00:24,319 --> 00:00:24,320
-Let's dive into the data. Find the stories we can tell with six three-nine-oh knowledge.
+Let's dive into the data. Find the stories we can tell. 
+
+4
+00:00:24,319 --> 00:00:24,320
+With six three-nine-oh knowledge.
 
 5
 00:00:24,320 --> 00:00:39,920
