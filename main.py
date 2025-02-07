@@ -13,7 +13,7 @@ import re
 parser = argparse.ArgumentParser(
     description="Create a karaoke video from a subtitle file and optionally an audio file"
 )
-parser.add_argument("-f", "--fps", type=int, default=60, help="frames per second")
+parser.add_argument("-f", "--fps", type=int, default=120, help="frames per second")
 parser.add_argument(
     "-a",
     "--audio",
@@ -41,10 +41,11 @@ width, height = 1280, 720
 bar_height = 80  # Gradient bar at the top
 bg_height = height - bar_height  # Background area for images
 
-# We'll define the following durations (in seconds):
-static_duration = 8.0  # duration of the static logo phase
-transition_duration = 2.0  # duration over which the static logo fades out and the dynamic background fades in
-dynamic_start = static_duration + transition_duration  # dynamic phase begins at 10 sec
+# Durations (in seconds)
+static_duration = 6.5  # Static phase (logo shown)
+transition_duration = 3.5  # Transition phase (fade from static to dynamic)
+dynamic_start = static_duration + transition_duration
+credits_start_time = 86.00  # At this time, stop scrolling and show credits
 
 # ---------------------------
 # Load Static Logo for the First Phase
@@ -70,6 +71,29 @@ try:
     logo_canvas[:, :, 3] = 255
 except Exception as e:
     raise RuntimeError(f"Error loading logo.png: {e}")
+
+# ---------------------------
+# Load Credits Image (credts.png)
+# ---------------------------
+try:
+    credts = Image.open("credits.png").convert("RGB")
+    credts_width, credts_height = credts.size
+    # Use "cover" scaling so that the credits image fills the entire frame.
+    scale_credts = min(width / credts_width, height / credts_height)
+    new_credts_width = int(credts_width * scale_credts)
+    new_credts_height = int(credts_height * scale_credts)
+    credts_resized = credts.resize((new_credts_width, new_credts_height), Image.LANCZOS)
+    # Center-crop to exactly (width, height)
+    left = (new_credts_width - width) // 2
+    top = (new_credts_height - height) // 2
+    credts_cropped = credts_resized.crop((left, top, left + width, top + height))
+    credts_array = np.array(credts_cropped, dtype=np.uint8)
+    credts_array = credts_array[:, :, ::-1]  # Convert RGB to BGRA order for cairo
+    credts_canvas = np.empty((height, width, 4), dtype=np.uint8)
+    credts_canvas[:, :, :3] = credts_array
+    credts_canvas[:, :, 3] = 255
+except Exception as e:
+    raise RuntimeError(f"Error loading credts.png: {e}")
 
 # ---------------------------
 # Subtitle Parsing
@@ -117,7 +141,6 @@ for root, _, files in os.walk("staff"):
             image_list.append((root, file))
 
 # Sort the list so that images whose root contains "instrcutros" come first.
-# (Return 0 if "instrcutros" is in the path, else 1.)
 image_list.sort(
     key=lambda tup: (0 if "instrcutros" in tup[0].lower() else 1, tup[0], tup[1])
 )
@@ -164,7 +187,7 @@ if not half_canvases:
 # ---------------------------
 # Create Composite Canvases (Two Half-Canvases per Composite)
 # ---------------------------
-# Each composite canvas is of size (bg_height, width, 4) with two images side-by-side.
+# Each composite canvas will be of size (bg_height, width, 4) with two images side-by-side.
 composite_canvases = []
 num_half = len(half_canvases)
 i = 0
@@ -173,7 +196,7 @@ while i < num_half:
     composite[..., 3] = 255
     # Left half:
     composite[:, 0:half_width, :] = half_canvases[i]
-    # Right half: if available, use half_canvases[i+1]; otherwise, duplicate.
+    # Right half: if available, use half_canvases[i+1]; otherwise, duplicate the left half.
     if i + 1 < num_half:
         composite[:, half_width:width, :] = half_canvases[i + 1]
     else:
@@ -197,18 +220,13 @@ if audio_file is not None:
 else:
     T_total = max(time_tuple[1] for (time_tuple, _) in relevant_lines)
 
-# We want:
-#  - Static phase: first static_duration seconds (logo shown)
-#  - Transition phase: next transition_duration seconds (logo fades out, dynamic background fades in)
-#  - Dynamic (scrolling) phase: starts at dynamic_start = static_duration + transition_duration
-static_duration = 8.0
-transition_duration = 2.0
-dynamic_start = static_duration + transition_duration
 if T_total <= dynamic_start:
-    raise RuntimeError("Audio duration is too short (must be more than 10 seconds).")
+    raise RuntimeError(
+        "Audio duration is too short (must be more than static+transition seconds)."
+    )
 T_dynamic = T_total - dynamic_start  # Duration for the scrolling portion
 
-# Calculate scroll speed so that one full cycle is scrolled over the dynamic phase.
+# Calculate scroll speed so that one full cycle is scrolled over T_dynamic.
 scroll_speed = cycle_length / T_dynamic
 print(
     f"Computed scroll speed: {scroll_speed:.2f} pixels/sec (cycle_length = {cycle_length}px, dynamic duration = {T_dynamic:.2f} sec)"
@@ -216,14 +234,21 @@ print(
 
 
 # ---------------------------
-# Draw Frame Function for VideoClip (With Static Logo, Transition, and Scrolling Phase)
+# Draw Frame Function for VideoClip (With Static Logo, Transition, Scrolling, and Credits)
 # ---------------------------
 def draw_frame(time):
     if time < static_duration:
-        # Static phase: display the logo (with fade-in if desired)
+        # Static phase: display the static logo with fade-in.
+        static_fade_duration = 2.0  # seconds for fade-in
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
         context = cairo.Context(surface)
-        # (Optional: you could fade in the logo; here we simply show it.)
+        context.set_source_rgb(0, 0, 0)
+        context.rectangle(0, 0, width, height)
+        context.fill()
+        if time < static_fade_duration:
+            alpha = time / static_fade_duration
+        else:
+            alpha = 1.0
         logo_surf = cairo.ImageSurface.create_for_data(
             memoryview(logo_canvas).cast("B"),
             cairo.FORMAT_ARGB32,
@@ -232,8 +257,8 @@ def draw_frame(time):
             width * 4,
         )
         context.set_source_surface(logo_surf, 0, 0)
-        context.paint()
-        # Draw the gradient bar at the top.
+        context.paint_with_alpha(alpha)
+        # Draw gradient bar and welcome message.
         gradient = cairo.LinearGradient(0, 0, width, 0)
         gradient.add_color_stop_rgb(0, 198 / 255, 22 / 255, 141 / 255)
         gradient.add_color_stop_rgb(0.5, 102 / 255, 45 / 255, 145 / 255)
@@ -241,8 +266,7 @@ def draw_frame(time):
         context.rectangle(0, 0, width, bar_height)
         context.set_source(gradient)
         context.fill()
-        # Draw a welcome message.
-        welcome_text = "Welcome to 6.390"
+        welcome_text = "Welcome to 6.390!"
         context.select_font_face(
             "Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL
         )
@@ -256,9 +280,9 @@ def draw_frame(time):
         return get_npimage(surface, width, height)
 
     elif time < dynamic_start:
-        # Transition phase: blend the static logo frame and the dynamic scrolling frame.
-        t_norm = (time - static_duration) / transition_duration  # goes from 0 to 1
-        # Static frame (same as in the static phase):
+        # Transition phase: blend static logo and dynamic scrolling frame.
+        t_norm = (time - static_duration) / transition_duration  # 0 to 1
+        # Generate static frame.
         static_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
         static_ctx = cairo.Context(static_surface)
         static_ctx.set_source_surface(
@@ -273,7 +297,6 @@ def draw_frame(time):
             0,
         )
         static_ctx.paint()
-        # Draw gradient bar and welcome message.
         gradient = cairo.LinearGradient(0, 0, width, 0)
         gradient.add_color_stop_rgb(0, 198 / 255, 22 / 255, 141 / 255)
         gradient.add_color_stop_rgb(0.5, 102 / 255, 45 / 255, 145 / 255)
@@ -281,7 +304,7 @@ def draw_frame(time):
         static_ctx.rectangle(0, 0, width, bar_height)
         static_ctx.set_source(gradient)
         static_ctx.fill()
-        welcome_text = "Welcome to 6.390"
+        welcome_text = "Welcome to 6.390!"
         static_ctx.select_font_face(
             "Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL
         )
@@ -294,11 +317,9 @@ def draw_frame(time):
         static_ctx.show_text(welcome_text)
         static_frame = get_npimage(static_surface, width, height)
 
-        # Dynamic frame: use t_dynamic = max(0, time - dynamic_start) which is 0 for time in [8,10).
-        # Thus, dynamic frame is computed with t_dynamic = 0.
+        # Generate dynamic frame at initial dynamic state (t_dynamic = 0).
         dynamic_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
         dynamic_ctx = cairo.Context(dynamic_surface)
-        # For t_dynamic = 0, pos = 0.
         current_canvas = background_images[0]
         next_canvas = background_images[1 % num_composites]
         curr_img_surf = cairo.ImageSurface.create_for_data(
@@ -319,7 +340,6 @@ def draw_frame(time):
         )
         dynamic_ctx.set_source_surface(next_img_surf, width, bar_height)
         dynamic_ctx.paint()
-        # Draw gradient bar and dynamic subtitles.
         gradient = cairo.LinearGradient(0, 0, width, 0)
         gradient.add_color_stop_rgb(0, 198 / 255, 22 / 255, 141 / 255)
         gradient.add_color_stop_rgb(0.5, 102 / 255, 45 / 255, 145 / 255)
@@ -345,14 +365,14 @@ def draw_frame(time):
             dynamic_ctx.show_text(subtitle)
         dynamic_frame = get_npimage(dynamic_surface, width, height)
 
-        # Blend the two frames.
+        # Blend the static and dynamic frames.
         blended = (1 - t_norm) * static_frame.astype(
             np.float32
         ) + t_norm * dynamic_frame.astype(np.float32)
         blended = np.clip(blended, 0, 255).astype(np.uint8)
         return blended
 
-    else:
+    elif time < credits_start_time:
         # Dynamic scrolling phase.
         t_dynamic = time - dynamic_start
         pos = (scroll_speed * t_dynamic) % cycle_length
@@ -405,6 +425,29 @@ def draw_frame(time):
             y_text = (bar_height - te.height) / 2 - te.y_bearing
             context.move_to(x_text, y_text)
             context.show_text(subtitle)
+        return get_npimage(surface, width, height)
+
+    else:
+        # Credits phase: display the static credits image.
+        surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+        context = cairo.Context(surface)
+        credts_surf = cairo.ImageSurface.create_for_data(
+            memoryview(credts_canvas).cast("B"),
+            cairo.FORMAT_ARGB32,
+            width,
+            height,
+            width * 4,
+        )
+        context.set_source_surface(credts_surf, 0, 0)
+        context.paint()
+        # Optionally, draw the gradient bar at the top.
+        gradient = cairo.LinearGradient(0, 0, width, 0)
+        gradient.add_color_stop_rgb(0, 198 / 255, 22 / 255, 141 / 255)
+        gradient.add_color_stop_rgb(0.5, 102 / 255, 45 / 255, 145 / 255)
+        gradient.add_color_stop_rgb(1, 0, 161 / 255, 199 / 255)
+        context.rectangle(0, 0, width, bar_height)
+        context.set_source(gradient)
+        context.fill()
         return get_npimage(surface, width, height)
 
 
