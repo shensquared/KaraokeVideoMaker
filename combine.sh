@@ -1,0 +1,1 @@
+ffmpeg -i output.mp4 -i 390theme.mp3 -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 -shortest 390_theme.mp4
