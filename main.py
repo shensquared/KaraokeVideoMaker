@@ -12,7 +12,7 @@ import math
 parser = argparse.ArgumentParser(
     description="Create a karaoke video from a subtitle file and optionally an audio file"
 )
-parser.add_argument("-f", "--fps", type=int, default=24, help="frames per second")
+parser.add_argument("-f", "--fps", type=int, default=60, help="frames per second")
 parser.add_argument(
     "-a",
     "--audio",
@@ -47,7 +47,7 @@ try:
     logo = Image.open("logo.png").convert("RGB")
     logo_width, logo_height = logo.size
     # Use "cover" scaling so that the logo fills the entire frame.
-    scale_logo = max(width / logo_width, height / logo_height)
+    scale_logo = min(width / logo_width, height / logo_height)
     new_logo_width = int(logo_width * scale_logo)
     new_logo_height = int(logo_height * scale_logo)
     logo_resized = logo.resize((new_logo_width, new_logo_height), Image.LANCZOS)
@@ -58,7 +58,7 @@ try:
     logo_array = np.array(logo_cropped, dtype=np.uint8)
     # Swap channels for cairo (BGRA order)
     logo_array = logo_array[:, :, ::-1]
-    # Create a canvas with full opacity.
+    # Create a full-frame logo canvas with full opacity.
     logo_canvas = np.empty((height, width, 4), dtype=np.uint8)
     logo_canvas[:, :, :3] = logo_array
     logo_canvas[:, :, 3] = 255
@@ -93,7 +93,7 @@ relevant_lines = [
 # ---------------------------
 def get_npimage(surface, width, height, transparent=False, y_origin="top"):
     im = np.frombuffer(surface.get_data(), np.uint8).reshape((height, width, 4))
-    # Cairo stores pixels as BGRA; convert to RGBA order.
+    # Cairo stores pixels as BGRA; reorder to RGBA.
     im = im[:, :, [2, 1, 0, 3]]
     if y_origin == "bottom":
         im = im[::-1]
@@ -103,45 +103,54 @@ def get_npimage(surface, width, height, transparent=False, y_origin="top"):
 # ---------------------------
 # Load Individual Images with "Fit" Scaling and Create Half-Canvases
 # ---------------------------
-# For each PNG in the "staff" folder, scale it so that its height equals bg_height.
-# Then place it in a half-canvas of width = width//2 (centered horizontally).
-half_width = width // 2
-half_canvases = []  # Each is a numpy array of shape (bg_height, half_width, 4)
-
+# We first collect all PNG file paths (with their root) from the "staff" folder.
+image_list = []
 for root, _, files in os.walk("staff"):
-    for file in sorted(files):
+    for file in files:
         if file.lower().endswith(".png"):
-            try:
-                img = Image.open(os.path.join(root, file)).convert("RGB")
-                img_width, img_height = img.size
+            image_list.append((root, file))
 
-                # Fit scaling: scale so the image's height exactly equals bg_height.
-                scale = bg_height / img_height
-                new_width = int(img_width * scale)
-                new_height = bg_height  # by design
-                img_resized = img.resize((new_width, new_height), Image.LANCZOS)
+# Sort the list so that images whose root contains "instrcutros" come first.
+# (The custom key returns 0 if "instrcutros" is in the path, else 1.)
+image_list.sort(
+    key=lambda tup: (0 if "instrcutros" in tup[0].lower() else 1, tup[0], tup[1])
+)
 
-                # Create a half-canvas with a black background.
-                half_canvas = np.zeros((bg_height, half_width, 4), dtype=np.uint8)
-                half_canvas[..., 3] = 255
+half_width = width // 2
+half_canvases = []  # Each will be a numpy array of shape (bg_height, half_width, 4)
 
-                # Center the resized image horizontally within the half-canvas.
-                left_margin = (half_width - new_width) // 2
-                if new_width > half_width:
-                    img_array = np.array(img_resized)[:, :half_width, :]
-                else:
-                    img_array = np.array(img_resized)
-                # Swap channels for cairo (BGRA)
-                img_array = img_array[:, :, ::-1]
-                paste_start = max(0, left_margin)
-                paste_end = paste_start + min(new_width, half_width)
-                half_canvas[:, paste_start:paste_end, :3] = img_array[
-                    :, : (paste_end - paste_start), :
-                ]
+for root, file in image_list:
+    try:
+        img = Image.open(os.path.join(root, file)).convert("RGB")
+        img_width, img_height = img.size
 
-                half_canvases.append(half_canvas)
-            except Exception as e:
-                print(f"Error loading image {file}: {e}")
+        # Fit scaling: scale so the image's height equals bg_height.
+        scale = bg_height / img_height
+        new_width = int(img_width * scale)
+        new_height = bg_height  # by design
+        img_resized = img.resize((new_width, new_height), Image.LANCZOS)
+
+        # Create a half-canvas with a black background.
+        half_canvas = np.zeros((bg_height, half_width, 4), dtype=np.uint8)
+        half_canvas[..., 3] = 255
+
+        # Center the resized image horizontally within the half-canvas.
+        left_margin = (half_width - new_width) // 2
+        if new_width > half_width:
+            img_array = np.array(img_resized)[:, :half_width, :]
+        else:
+            img_array = np.array(img_resized)
+        # Swap channels for cairo (BGRA)
+        img_array = img_array[:, :, ::-1]
+        paste_start = max(0, left_margin)
+        paste_end = paste_start + min(new_width, half_width)
+        half_canvas[:, paste_start:paste_end, :3] = img_array[
+            :, : (paste_end - paste_start), :
+        ]
+
+        half_canvases.append(half_canvas)
+    except Exception as e:
+        print(f"Error loading image {file}: {e}")
 
 if not half_canvases:
     raise RuntimeError("No images found in the 'staff' directory.")
@@ -166,7 +175,7 @@ while i < num_half:
     composite_canvases.append(composite)
     i += 2
 
-# Use composite_canvases as the scrolling backgrounds.
+# Use composite canvases as the scrolling backgrounds.
 background_images = composite_canvases
 num_composites = len(background_images)
 cycle_length = (
@@ -180,7 +189,6 @@ if audio_file is not None:
     audio_clip = mpy.AudioFileClip(audio_file)
     T = audio_clip.duration
 else:
-    # Fix: Extract end times from the first element of each tuple.
     T = max(time_tuple[1] for (time_tuple, _) in relevant_lines)
 
 # We'll show the static logo for the first 8 seconds.
@@ -213,6 +221,26 @@ def draw_frame(time):
         )
         context.set_source_surface(logo_surf, 0, 0)
         context.paint()
+        # Draw the gradient bar at the top.
+        gradient = cairo.LinearGradient(0, 0, width, 0)
+        gradient.add_color_stop_rgb(0, 198 / 255, 22 / 255, 141 / 255)
+        gradient.add_color_stop_rgb(0.5, 102 / 255, 45 / 255, 145 / 255)
+        gradient.add_color_stop_rgb(1, 0, 161 / 255, 199 / 255)
+        context.rectangle(0, 0, width, bar_height)
+        context.set_source(gradient)
+        context.fill()
+        # Draw a welcome message in the gradient bar.
+        welcome_text = "Welcome to 6.390"
+        context.select_font_face(
+            "Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL
+        )
+        context.set_font_size(40)
+        context.set_source_rgb(1, 1, 1)
+        te = context.text_extents(welcome_text)
+        x_text = (width - te.width) / 2 - te.x_bearing
+        y_text = (bar_height - te.height) / 2 - te.y_bearing
+        context.move_to(x_text, y_text)
+        context.show_text(welcome_text)
         return get_npimage(surface, width, height)
     else:
         t_dynamic = time - static_duration
