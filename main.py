@@ -5,6 +5,7 @@ import argparse
 from PIL import Image
 import os
 import math
+import re
 
 # ---------------------------
 # Argument Parsing
@@ -40,8 +41,13 @@ width, height = 1280, 720
 bar_height = 80  # Gradient bar at the top
 bg_height = height - bar_height  # Background area for images
 
+# We'll define the following durations (in seconds):
+static_duration = 8.0  # duration of the static logo phase
+transition_duration = 2.0  # duration over which the static logo fades out and the dynamic background fades in
+dynamic_start = static_duration + transition_duration  # dynamic phase begins at 10 sec
+
 # ---------------------------
-# Load Static Logo for the First 8 Seconds
+# Load Static Logo for the First Phase
 # ---------------------------
 try:
     logo = Image.open("logo.png").convert("RGB")
@@ -103,7 +109,7 @@ def get_npimage(surface, width, height, transparent=False, y_origin="top"):
 # ---------------------------
 # Load Individual Images with "Fit" Scaling and Create Half-Canvases
 # ---------------------------
-# We first collect all PNG file paths (with their root) from the "staff" folder.
+# Collect all PNG file paths (with their root) from the "staff" folder.
 image_list = []
 for root, _, files in os.walk("staff"):
     for file in files:
@@ -111,7 +117,7 @@ for root, _, files in os.walk("staff"):
             image_list.append((root, file))
 
 # Sort the list so that images whose root contains "instrcutros" come first.
-# (The custom key returns 0 if "instrcutros" is in the path, else 1.)
+# (Return 0 if "instrcutros" is in the path, else 1.)
 image_list.sort(
     key=lambda tup: (0 if "instrcutros" in tup[0].lower() else 1, tup[0], tup[1])
 )
@@ -158,7 +164,7 @@ if not half_canvases:
 # ---------------------------
 # Create Composite Canvases (Two Half-Canvases per Composite)
 # ---------------------------
-# Each composite canvas will be of size (bg_height, width, 4) with two images side-by-side.
+# Each composite canvas is of size (bg_height, width, 4) with two images side-by-side.
 composite_canvases = []
 num_half = len(half_canvases)
 i = 0
@@ -167,7 +173,7 @@ while i < num_half:
     composite[..., 3] = 255
     # Left half:
     composite[:, 0:half_width, :] = half_canvases[i]
-    # Right half: if available, use half_canvases[i+1]; otherwise, duplicate the left half.
+    # Right half: if available, use half_canvases[i+1]; otherwise, duplicate.
     if i + 1 < num_half:
         composite[:, half_width:width, :] = half_canvases[i + 1]
     else:
@@ -187,17 +193,22 @@ cycle_length = (
 # ---------------------------
 if audio_file is not None:
     audio_clip = mpy.AudioFileClip(audio_file)
-    T = audio_clip.duration
+    T_total = audio_clip.duration
 else:
-    T = max(time_tuple[1] for (time_tuple, _) in relevant_lines)
+    T_total = max(time_tuple[1] for (time_tuple, _) in relevant_lines)
 
-# We'll show the static logo for the first 8 seconds.
+# We want:
+#  - Static phase: first static_duration seconds (logo shown)
+#  - Transition phase: next transition_duration seconds (logo fades out, dynamic background fades in)
+#  - Dynamic (scrolling) phase: starts at dynamic_start = static_duration + transition_duration
 static_duration = 8.0
-if T <= static_duration:
-    raise RuntimeError("Audio duration is too short (must be more than 8 seconds).")
-T_dynamic = T - static_duration  # Duration for the scrolling portion
+transition_duration = 2.0
+dynamic_start = static_duration + transition_duration
+if T_total <= dynamic_start:
+    raise RuntimeError("Audio duration is too short (must be more than 10 seconds).")
+T_dynamic = T_total - dynamic_start  # Duration for the scrolling portion
 
-# Calculate scroll speed so that one full cycle is scrolled over T_dynamic.
+# Calculate scroll speed so that one full cycle is scrolled over the dynamic phase.
 scroll_speed = cycle_length / T_dynamic
 print(
     f"Computed scroll speed: {scroll_speed:.2f} pixels/sec (cycle_length = {cycle_length}px, dynamic duration = {T_dynamic:.2f} sec)"
@@ -205,13 +216,14 @@ print(
 
 
 # ---------------------------
-# Draw Frame Function for VideoClip (With Initial Static Logo)
+# Draw Frame Function for VideoClip (With Static Logo, Transition, and Scrolling Phase)
 # ---------------------------
 def draw_frame(time):
     if time < static_duration:
-        # For the first 8 seconds, display the static logo.
+        # Static phase: display the logo (with fade-in if desired)
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
         context = cairo.Context(surface)
+        # (Optional: you could fade in the logo; here we simply show it.)
         logo_surf = cairo.ImageSurface.create_for_data(
             memoryview(logo_canvas).cast("B"),
             cairo.FORMAT_ARGB32,
@@ -229,7 +241,7 @@ def draw_frame(time):
         context.rectangle(0, 0, width, bar_height)
         context.set_source(gradient)
         context.fill()
-        # Draw a welcome message in the gradient bar.
+        # Draw a welcome message.
         welcome_text = "Welcome to 6.390"
         context.select_font_face(
             "Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL
@@ -242,22 +254,116 @@ def draw_frame(time):
         context.move_to(x_text, y_text)
         context.show_text(welcome_text)
         return get_npimage(surface, width, height)
-    else:
-        t_dynamic = time - static_duration
-        pos = (scroll_speed * t_dynamic) % cycle_length
 
+    elif time < dynamic_start:
+        # Transition phase: blend the static logo frame and the dynamic scrolling frame.
+        t_norm = (time - static_duration) / transition_duration  # goes from 0 to 1
+        # Static frame (same as in the static phase):
+        static_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+        static_ctx = cairo.Context(static_surface)
+        static_ctx.set_source_surface(
+            cairo.ImageSurface.create_for_data(
+                memoryview(logo_canvas).cast("B"),
+                cairo.FORMAT_ARGB32,
+                width,
+                height,
+                width * 4,
+            ),
+            0,
+            0,
+        )
+        static_ctx.paint()
+        # Draw gradient bar and welcome message.
+        gradient = cairo.LinearGradient(0, 0, width, 0)
+        gradient.add_color_stop_rgb(0, 198 / 255, 22 / 255, 141 / 255)
+        gradient.add_color_stop_rgb(0.5, 102 / 255, 45 / 255, 145 / 255)
+        gradient.add_color_stop_rgb(1, 0, 161 / 255, 199 / 255)
+        static_ctx.rectangle(0, 0, width, bar_height)
+        static_ctx.set_source(gradient)
+        static_ctx.fill()
+        welcome_text = "Welcome to 6.390"
+        static_ctx.select_font_face(
+            "Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL
+        )
+        static_ctx.set_font_size(40)
+        static_ctx.set_source_rgb(1, 1, 1)
+        te = static_ctx.text_extents(welcome_text)
+        x_text = (width - te.width) / 2 - te.x_bearing
+        y_text = (bar_height - te.height) / 2 - te.y_bearing
+        static_ctx.move_to(x_text, y_text)
+        static_ctx.show_text(welcome_text)
+        static_frame = get_npimage(static_surface, width, height)
+
+        # Dynamic frame: use t_dynamic = max(0, time - dynamic_start) which is 0 for time in [8,10).
+        # Thus, dynamic frame is computed with t_dynamic = 0.
+        dynamic_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+        dynamic_ctx = cairo.Context(dynamic_surface)
+        # For t_dynamic = 0, pos = 0.
+        current_canvas = background_images[0]
+        next_canvas = background_images[1 % num_composites]
+        curr_img_surf = cairo.ImageSurface.create_for_data(
+            memoryview(current_canvas).cast("B"),
+            cairo.FORMAT_ARGB32,
+            width,
+            bg_height,
+            width * 4,
+        )
+        dynamic_ctx.set_source_surface(curr_img_surf, 0, bar_height)
+        dynamic_ctx.paint()
+        next_img_surf = cairo.ImageSurface.create_for_data(
+            memoryview(next_canvas).cast("B"),
+            cairo.FORMAT_ARGB32,
+            width,
+            bg_height,
+            width * 4,
+        )
+        dynamic_ctx.set_source_surface(next_img_surf, width, bar_height)
+        dynamic_ctx.paint()
+        # Draw gradient bar and dynamic subtitles.
+        gradient = cairo.LinearGradient(0, 0, width, 0)
+        gradient.add_color_stop_rgb(0, 198 / 255, 22 / 255, 141 / 255)
+        gradient.add_color_stop_rgb(0.5, 102 / 255, 45 / 255, 145 / 255)
+        gradient.add_color_stop_rgb(1, 0, 161 / 255, 199 / 255)
+        dynamic_ctx.rectangle(0, 0, width, bar_height)
+        dynamic_ctx.set_source(gradient)
+        dynamic_ctx.fill()
+        subtitle = ""
+        for (start, end), text in relevant_lines:
+            if start <= time < end:
+                subtitle = text
+                break
+        if subtitle:
+            dynamic_ctx.select_font_face(
+                "Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL
+            )
+            dynamic_ctx.set_font_size(40)
+            dynamic_ctx.set_source_rgb(1, 1, 1)
+            te = dynamic_ctx.text_extents(subtitle)
+            x_text = (width - te.width) / 2 - te.x_bearing
+            y_text = (bar_height - te.height) / 2 - te.y_bearing
+            dynamic_ctx.move_to(x_text, y_text)
+            dynamic_ctx.show_text(subtitle)
+        dynamic_frame = get_npimage(dynamic_surface, width, height)
+
+        # Blend the two frames.
+        blended = (1 - t_norm) * static_frame.astype(
+            np.float32
+        ) + t_norm * dynamic_frame.astype(np.float32)
+        blended = np.clip(blended, 0, 255).astype(np.uint8)
+        return blended
+
+    else:
+        # Dynamic scrolling phase.
+        t_dynamic = time - dynamic_start
+        pos = (scroll_speed * t_dynamic) % cycle_length
         current_index = int(pos // width)
         offset = pos % width
         x_offset = -offset
-
         current_canvas = background_images[current_index]
         next_index = (current_index + 1) % num_composites
         next_canvas = background_images[next_index]
-
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
         context = cairo.Context(surface)
-
-        # Draw the scrolling background in the area below the gradient bar.
         curr_img_surf = cairo.ImageSurface.create_for_data(
             memoryview(current_canvas).cast("B"),
             cairo.FORMAT_ARGB32,
@@ -267,7 +373,6 @@ def draw_frame(time):
         )
         context.set_source_surface(curr_img_surf, x_offset, bar_height)
         context.paint()
-
         next_img_surf = cairo.ImageSurface.create_for_data(
             memoryview(next_canvas).cast("B"),
             cairo.FORMAT_ARGB32,
@@ -277,8 +382,6 @@ def draw_frame(time):
         )
         context.set_source_surface(next_img_surf, x_offset + width, bar_height)
         context.paint()
-
-        # Draw the gradient bar at the top.
         gradient = cairo.LinearGradient(0, 0, width, 0)
         gradient.add_color_stop_rgb(0, 198 / 255, 22 / 255, 141 / 255)
         gradient.add_color_stop_rgb(0.5, 102 / 255, 45 / 255, 145 / 255)
@@ -286,8 +389,6 @@ def draw_frame(time):
         context.rectangle(0, 0, width, bar_height)
         context.set_source(gradient)
         context.fill()
-
-        # Draw time-synced lyrics (centered in the gradient bar).
         subtitle = ""
         for (start, end), text in relevant_lines:
             if start <= time < end:
@@ -304,14 +405,13 @@ def draw_frame(time):
             y_text = (bar_height - te.height) / 2 - te.y_bearing
             context.move_to(x_text, y_text)
             context.show_text(subtitle)
-
         return get_npimage(surface, width, height)
 
 
 # ---------------------------
 # Create VideoClip and Write Output
 # ---------------------------
-video_clip = mpy.VideoClip(draw_frame, duration=T)
+video_clip = mpy.VideoClip(draw_frame, duration=T_total)
 if audio_file is not None:
     video_clip = video_clip.set_audio(audio_clip)
 
