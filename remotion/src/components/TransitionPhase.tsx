@@ -14,14 +14,15 @@ import {
   WELCOME_TEXT,
 } from "../utils/constants";
 import type { Subtitle as SubtitleType } from "../utils/parseSrt";
+import type { StaffMember } from "../Root";
 
 interface TransitionPhaseProps {
-  staffImages: string[];
+  staffMembers: StaffMember[];
   subtitles: SubtitleType[];
 }
 
 export const TransitionPhase: React.FC<TransitionPhaseProps> = ({
-  staffImages,
+  staffMembers,
   subtitles,
 }) => {
   const frame = useCurrentFrame();
@@ -37,9 +38,9 @@ export const TransitionPhase: React.FC<TransitionPhaseProps> = ({
     (s) => currentTime >= s.start && currentTime < s.end
   )?.text;
 
-  // First two staff images for initial dynamic frame
-  const firstImage = staffImages[0] || "";
-  const secondImage = staffImages[1] || staffImages[0] || "";
+  // First two staff members for initial dynamic frame
+  const firstImage = staffMembers[0]?.image || "";
+  const secondImage = staffMembers[1]?.image || staffMembers[0]?.image || "";
 
   return (
     <div

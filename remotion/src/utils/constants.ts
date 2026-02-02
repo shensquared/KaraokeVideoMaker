@@ -1,7 +1,7 @@
 // Video dimensions
 export const WIDTH = 1280;
 export const HEIGHT = 720;
-export const FPS = 120;
+export const FPS = 60;
 
 // Layout
 export const BAR_HEIGHT = 80;

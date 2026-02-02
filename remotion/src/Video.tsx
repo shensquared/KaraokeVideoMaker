@@ -12,17 +12,18 @@ import {
   secondsToFrames,
 } from "./utils/constants";
 import type { Subtitle } from "./utils/parseSrt";
+import type { StaffMember } from "./Root";
 
 export interface VideoProps {
   totalDurationInFrames: number;
-  staffImages: string[];
+  staffMembers: StaffMember[];
   subtitles: Subtitle[];
   audioFile?: string;
 }
 
 export const Video: React.FC<VideoProps> = ({
   totalDurationInFrames,
-  staffImages,
+  staffMembers,
   subtitles,
   audioFile,
 }) => {
@@ -38,12 +39,12 @@ export const Video: React.FC<VideoProps> = ({
 
       {/* Transition phase: 6.5 - 10 seconds */}
       <Sequence from={STATIC_FRAMES} durationInFrames={TRANSITION_FRAMES}>
-        <TransitionPhase staffImages={staffImages} subtitles={subtitles} />
+        <TransitionPhase staffMembers={staffMembers} subtitles={subtitles} />
       </Sequence>
 
       {/* Scrolling phase: 10 - 86 seconds */}
       <Sequence from={DYNAMIC_START_FRAME} durationInFrames={scrollingDurationFrames}>
-        <ScrollingPhase staffImages={staffImages} subtitles={subtitles} />
+        <ScrollingPhase staffMembers={staffMembers} subtitles={subtitles} />
       </Sequence>
 
       {/* Credits phase: 86 seconds onwards */}

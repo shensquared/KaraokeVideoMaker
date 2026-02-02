@@ -69,30 +69,72 @@ With funky neural networks, we can't be beat!
 00:01:26,830 --> 00:01:28,040
 Credits`;
 
-// Staff images - ordered with instructors first (matching Python sorting)
-// Format: staff/<category>/element_<n>.png
-const staffImages = [
-  // Instructors first (8 images)
-  "staff/instructor/element_0.png",
-  "staff/instructor/element_1.png",
-  "staff/instructor/element_2.png",
-  "staff/instructor/element_3.png",
-  "staff/instructor/element_4.png",
-  "staff/instructor/element_5.png",
-  "staff/instructor/element_6.png",
-  "staff/instructor/element_7.png",
-  // Course Assistant (1 image)
-  "staff/courseassistant/element_0.png",
-  // LAs (47 images)
-  ...Array.from({ length: 36 }, (_, i) => `staff/la/element_${i}.png`),
-  "staff/la/element_37.png",
-  "staff/la/element_38.png",
-  "staff/la/element_39.png",
-  "staff/la/element_40.png",
-  "staff/la/element_41.png",
-  "staff/la/element_42.png",
-  // TAs (17 images)
-  ...Array.from({ length: 17 }, (_, i) => `staff/ta/element_${i}.png`),
+// Staff members - ordered: instructors, TAs, UTAs, course assistants
+export interface StaffMember {
+  image: string;
+  name: string;
+}
+
+const staffMembers: StaffMember[] = [
+  // Instructors (4)
+  { image: "staff/instructor/manoli.jpg", name: "Manolis Kellis" },
+  { image: "staff/instructor/wojciech.jpg", name: "Wojciech Matusik" },
+  { image: "staff/instructor/mardavij.jpg", name: "Mardavij Roozbehani" },
+  { image: "staff/instructor/ashia07.png", name: "Ashia Wilson" },
+  // TAs (23)
+  { image: "staff/ta/jesusca.jpg", name: "Jesus Caraballo Anaya" },
+  { image: "staff/ta/xabackus.jpeg", name: "Xander Backus" },
+  { image: "staff/ta/abthebee.jpg", name: "Abhay Basireddy" },
+  { image: "staff/ta/chuang26.jpg", name: "Christine Huang" },
+  { image: "staff/ta/cassidyj.png", name: "Cassidy Jennings" },
+  { image: "staff/ta/kolic.png", name: "Amir Kolic" },
+  { image: "staff/ta/minniejl.png", name: "Minnie Liang" },
+  { image: "staff/ta/eve_lal.jpg", name: "Evelyn Lianto" },
+  { image: "staff/ta/luqiao.jpg", name: "Luqiao Liu" },
+  { image: "staff/ta/anhn.png", name: "Anh Nguyen" },
+  { image: "staff/ta/muktha21.jpg", name: "Muktha Ramesh" },
+  { image: "staff/ta/dryu.jpg", name: "DongHun Ryu" },
+  { image: "staff/ta/rshah2.jpeg", name: "Rushil Shah" },
+  { image: "staff/ta/jsong7.jpeg", name: "Jonathan Song" },
+  { image: "staff/ta/inimai.jpg", name: "Inimai Subramanian" },
+  { image: "staff/ta/aimeew.jpeg", name: "Aimee Wang" },
+  { image: "staff/ta/gwang2.png", name: "Grace Wang" },
+  { image: "staff/ta/lw0328.jpeg", name: "Lillian Wang" },
+  { image: "staff/ta/phoenixw.png", name: "Phoenix Wu" },
+  { image: "staff/ta/elisaxia.jpeg", name: "Elisa Xia" },
+  { image: "staff/ta/jjz300.jpg", name: "Jocelyn Zhao" },
+  { image: "staff/ta/mirzhao.jpeg", name: "Miranda Zhao" },
+  { image: "staff/ta/akzheng.png", name: "Andy Zheng" },
+  // UTAs with photos (10)
+  { image: "staff/uta/charisc.jpg", name: "Charis Ching" },
+  { image: "staff/uta/gfarina.jpeg", name: "Gabriele Farina" },
+  { image: "staff/uta/cge7.jpeg", name: "Chris Ge" },
+  { image: "staff/uta/monardo.jpeg", name: "Vincent Monardo" },
+  { image: "staff/uta/enoriega.png", name: "Eric Noriega" },
+  { image: "staff/uta/joycequ.jpg", name: "Joyce Qu" },
+  { image: "staff/uta/darivero.png", name: "Diego Rivero" },
+  { image: "staff/uta/shenshen.jpeg", name: "Shen Shen" },
+  { image: "staff/uta/alexdang.jpg", name: "Alex Dang" },
+  { image: "staff/uta/yiqingdu.jpeg", name: "Yiqing Du" },
+  // UTAs with placeholder (18)
+  { image: "staff/uta/widetim.png", name: "Marcus Bluestone" },
+  { image: "staff/uta/widetim.png", name: "Maryna Bohdan" },
+  { image: "staff/uta/widetim.png", name: "Kara Chou" },
+  { image: "staff/uta/widetim.png", name: "Sanjana Duttagupta" },
+  { image: "staff/uta/widetim.png", name: "Ernesto Gomez" },
+  { image: "staff/uta/widetim.png", name: "Tori Kelley" },
+  { image: "staff/uta/widetim.png", name: "Kathryn Le" },
+  { image: "staff/uta/widetim.png", name: "Michelle Li" },
+  { image: "staff/uta/widetim.png", name: "Lilah Lindemann" },
+  { image: "staff/uta/widetim.png", name: "Caleb Mathewos" },
+  { image: "staff/uta/widetim.png", name: "Wyatt Mowery" },
+  { image: "staff/uta/widetim.png", name: "Rafael Ribeiro" },
+  { image: "staff/uta/widetim.png", name: "Bhadra Rupesh" },
+  { image: "staff/uta/widetim.png", name: "Maxwell Sun" },
+  { image: "staff/uta/widetim.png", name: "Sukrith Velmineti" },
+  { image: "staff/uta/widetim.png", name: "Alexandra Volkova" },
+  { image: "staff/uta/widetim.png", name: "Annie Wang" },
+  { image: "staff/uta/widetim.png", name: "Josephine Wang" },
 ];
 
 // Parse subtitles
@@ -115,9 +157,9 @@ export const RemotionRoot: React.FC = () => {
         height={HEIGHT}
         defaultProps={{
           totalDurationInFrames: TOTAL_DURATION_FRAMES,
-          staffImages,
+          staffMembers,
           subtitles,
-          audioFile: "audio.mp3",
+          audioFile: "audio.wav",
         }}
       />
     </>

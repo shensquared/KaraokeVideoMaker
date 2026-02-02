@@ -13,14 +13,15 @@ import {
   FPS,
 } from "../utils/constants";
 import type { Subtitle as SubtitleType } from "../utils/parseSrt";
+import type { StaffMember } from "../Root";
 
 interface ScrollingPhaseProps {
-  staffImages: string[];
+  staffMembers: StaffMember[];
   subtitles: SubtitleType[];
 }
 
 export const ScrollingPhase: React.FC<ScrollingPhaseProps> = ({
-  staffImages,
+  staffMembers,
   subtitles,
 }) => {
   const frame = useCurrentFrame();
@@ -30,8 +31,8 @@ export const ScrollingPhase: React.FC<ScrollingPhaseProps> = ({
   const currentTime = DYNAMIC_START + frame / fps;
 
   // Calculate cycle length: each composite is 2 images side by side = WIDTH pixels
-  // Number of composites = ceil(staffImages.length / 2)
-  const numComposites = Math.ceil(staffImages.length / 2);
+  // Number of composites = ceil(staffMembers.length / 2)
+  const numComposites = Math.ceil(staffMembers.length / 2);
   const cycleLength = numComposites * WIDTH;
 
   // Dynamic duration (scrolling phase duration)
@@ -45,11 +46,11 @@ export const ScrollingPhase: React.FC<ScrollingPhaseProps> = ({
   const pos = (scrollSpeed * tDynamic) % cycleLength;
 
   // Create composite pairs for rendering
-  const composites: { left: string; right: string }[] = [];
-  for (let i = 0; i < staffImages.length; i += 2) {
+  const composites: { left: StaffMember; right: StaffMember }[] = [];
+  for (let i = 0; i < staffMembers.length; i += 2) {
     composites.push({
-      left: staffImages[i],
-      right: staffImages[i + 1] || staffImages[i], // duplicate if odd number
+      left: staffMembers[i],
+      right: staffMembers[i + 1] || staffMembers[i], // duplicate if odd number
     });
   }
 
@@ -93,8 +94,8 @@ export const ScrollingPhase: React.FC<ScrollingPhaseProps> = ({
             display: "flex",
           }}
         >
-          <StaffImage src={currentComposite.left} />
-          <StaffImage src={currentComposite.right} />
+          <StaffImage src={currentComposite.left.image} name={currentComposite.left.name} />
+          <StaffImage src={currentComposite.right.image} name={currentComposite.right.name} />
         </div>
 
         {/* Next composite */}
@@ -108,8 +109,8 @@ export const ScrollingPhase: React.FC<ScrollingPhaseProps> = ({
             display: "flex",
           }}
         >
-          <StaffImage src={nextComposite.left} />
-          <StaffImage src={nextComposite.right} />
+          <StaffImage src={nextComposite.left.image} name={nextComposite.left.name} />
+          <StaffImage src={nextComposite.right.image} name={nextComposite.right.name} />
         </div>
       </div>
 
@@ -122,14 +123,16 @@ export const ScrollingPhase: React.FC<ScrollingPhaseProps> = ({
 
 interface StaffImageProps {
   src: string;
+  name: string;
 }
 
-const StaffImage: React.FC<StaffImageProps> = ({ src }) => {
+const StaffImage: React.FC<StaffImageProps> = ({ src, name }) => {
   return (
     <div
       style={{
         width: HALF_WIDTH,
         height: BG_HEIGHT,
+        position: "relative",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
@@ -145,6 +148,28 @@ const StaffImage: React.FC<StaffImageProps> = ({ src }) => {
           objectFit: "contain",
         }}
       />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          width: "100%",
+          backgroundColor: "rgba(0, 0, 0, 0.6)",
+          padding: "4px 0",
+          textAlign: "center",
+        }}
+      >
+        <span
+          style={{
+            color: "white",
+            fontSize: 18,
+            fontWeight: "bold",
+            fontFamily: "Arial, sans-serif",
+          }}
+        >
+          {name}
+        </span>
+      </div>
     </div>
   );
 };
