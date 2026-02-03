@@ -12,7 +12,7 @@ export const HALF_WIDTH = WIDTH / 2;
 export const STATIC_DURATION = 6.5;
 export const TRANSITION_DURATION = 3.5;
 export const DYNAMIC_START = STATIC_DURATION + TRANSITION_DURATION; // 10 seconds
-export const CREDITS_START_TIME = 86.0;
+export const CREDITS_START_TIME = 90.0; // no separate credits phase; staff photos run to end
 
 // Fade durations (in seconds)
 export const LOGO_FADE_IN_DURATION = 2.0;

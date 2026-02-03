@@ -1,5 +1,22 @@
 test/
 output/
+output.mp4
+
+# Media assets (keep out of git history)
+*.mp4
+*.mp3
+*.wav
+
+# Remotion public assets (course-specific media)
+remotion/public/audio.*
+remotion/public/credits.png
+remotion/public/staff/
+
+# Claude Code
+.claude/
+
+# Node
+node_modules/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -168,7 +185,7 @@ cython_debug/
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
 
 # Thumbnails
 ._*

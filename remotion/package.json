@@ -6,6 +6,11 @@
     "start": "remotion studio",
     "build": "remotion bundle",
     "render": "remotion render KaraokeVideo out/video.mp4 --audio-codec aac --audio-bitrate 192K",
+    "render:scroll": "remotion render KaraokeVideo-scroll out/video-scroll.mp4 --audio-codec aac --audio-bitrate 192K",
+    "render:kenburns": "remotion render KaraokeVideo-kenburns out/video-kenburns.mp4 --audio-codec aac --audio-bitrate 192K",
+    "render:polaroid": "remotion render KaraokeVideo-polaroid out/video-polaroid.mp4 --audio-codec aac --audio-bitrate 192K",
+    "render:grid": "remotion render KaraokeVideo-grid out/video-grid.mp4 --audio-codec aac --audio-bitrate 192K",
+    "render:all": "yarn render:scroll && yarn render:kenburns && yarn render:polaroid && yarn render:grid",
     "upgrade": "remotion upgrade"
   },
   "dependencies": {

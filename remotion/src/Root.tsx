@@ -3,6 +3,7 @@ import { Composition } from "remotion";
 import { Video, VideoProps } from "./Video";
 import { WIDTH, HEIGHT, FPS, secondsToFrames } from "./utils/constants";
 import { parseSrt } from "./utils/parseSrt";
+import type { AnimationStyle } from "./components/ScrollingPhase";
 
 // Import subtitles content
 const srtContent = `1
@@ -75,67 +76,68 @@ export interface StaffMember {
   name: string;
 }
 
+const P = "staff/photos";
+
 const staffMembers: StaffMember[] = [
-  // Instructors (4)
-  { image: "staff/instructor/manoli.jpg", name: "Manolis Kellis" },
-  { image: "staff/instructor/wojciech.jpg", name: "Wojciech Matusik" },
-  { image: "staff/instructor/mardavij.jpg", name: "Mardavij Roozbehani" },
-  { image: "staff/instructor/ashia07.png", name: "Ashia Wilson" },
-  // TAs (23)
-  { image: "staff/ta/jesusca.jpg", name: "Jesus Caraballo Anaya" },
-  { image: "staff/ta/xabackus.jpeg", name: "Xander Backus" },
-  { image: "staff/ta/abthebee.jpg", name: "Abhay Basireddy" },
-  { image: "staff/ta/chuang26.jpg", name: "Christine Huang" },
-  { image: "staff/ta/cassidyj.png", name: "Cassidy Jennings" },
-  { image: "staff/ta/kolic.png", name: "Amir Kolic" },
-  { image: "staff/ta/minniejl.png", name: "Minnie Liang" },
-  { image: "staff/ta/eve_lal.jpg", name: "Evelyn Lianto" },
-  { image: "staff/ta/luqiao.jpg", name: "Luqiao Liu" },
-  { image: "staff/ta/anhn.png", name: "Anh Nguyen" },
-  { image: "staff/ta/muktha21.jpg", name: "Muktha Ramesh" },
-  { image: "staff/ta/dryu.jpg", name: "DongHun Ryu" },
-  { image: "staff/ta/rshah2.jpeg", name: "Rushil Shah" },
-  { image: "staff/ta/jsong7.jpeg", name: "Jonathan Song" },
-  { image: "staff/ta/inimai.jpg", name: "Inimai Subramanian" },
-  { image: "staff/ta/aimeew.jpeg", name: "Aimee Wang" },
-  { image: "staff/ta/gwang2.png", name: "Grace Wang" },
-  { image: "staff/ta/lw0328.jpeg", name: "Lillian Wang" },
-  { image: "staff/ta/phoenixw.png", name: "Phoenix Wu" },
-  { image: "staff/ta/elisaxia.jpeg", name: "Elisa Xia" },
-  { image: "staff/ta/jjz300.jpg", name: "Jocelyn Zhao" },
-  { image: "staff/ta/mirzhao.jpeg", name: "Miranda Zhao" },
-  { image: "staff/ta/akzheng.png", name: "Andy Zheng" },
-  // UTAs with photos (10)
-  { image: "staff/uta/charisc.jpg", name: "Charis Ching" },
-  { image: "staff/uta/gfarina.jpeg", name: "Gabriele Farina" },
-  { image: "staff/uta/cge7.jpeg", name: "Chris Ge" },
-  { image: "staff/uta/monardo.jpeg", name: "Vincent Monardo" },
-  { image: "staff/uta/enoriega.png", name: "Eric Noriega" },
-  { image: "staff/uta/joycequ.jpg", name: "Joyce Qu" },
-  { image: "staff/uta/darivero.png", name: "Diego Rivero" },
-  { image: "staff/uta/shenshen.jpeg", name: "Shen Shen" },
-  { image: "staff/uta/alexdang.jpg", name: "Alex Dang" },
-  { image: "staff/uta/yiqingdu.jpeg", name: "Yiqing Du" },
-  // UTAs with placeholder (18)
-  { image: "staff/uta/widetim.png", name: "Marcus Bluestone" },
-  { image: "staff/uta/widetim.png", name: "Maryna Bohdan" },
-  { image: "staff/uta/widetim.png", name: "Kara Chou" },
-  { image: "staff/uta/widetim.png", name: "Sanjana Duttagupta" },
-  { image: "staff/uta/widetim.png", name: "Ernesto Gomez" },
-  { image: "staff/uta/widetim.png", name: "Tori Kelley" },
-  { image: "staff/uta/widetim.png", name: "Kathryn Le" },
-  { image: "staff/uta/widetim.png", name: "Michelle Li" },
-  { image: "staff/uta/widetim.png", name: "Lilah Lindemann" },
-  { image: "staff/uta/widetim.png", name: "Caleb Mathewos" },
-  { image: "staff/uta/widetim.png", name: "Wyatt Mowery" },
-  { image: "staff/uta/widetim.png", name: "Rafael Ribeiro" },
-  { image: "staff/uta/widetim.png", name: "Bhadra Rupesh" },
-  { image: "staff/uta/widetim.png", name: "Maxwell Sun" },
-  { image: "staff/uta/widetim.png", name: "Sukrith Velmineti" },
-  { image: "staff/uta/widetim.png", name: "Alexandra Volkova" },
-  { image: "staff/uta/widetim.png", name: "Annie Wang" },
-  { image: "staff/uta/widetim.png", name: "Josephine Wang" },
+  { image: `${P}/jesusca.jpg`, name: "Jesus Caraballo Anaya" },
+  { image: `${P}/xabackus.jpeg`, name: "Xander Backus" },
+  { image: `${P}/abthebee.jpg`, name: "Abhay Basireddy" },
+  { image: `${P}/marcusbl.jpg`, name: "Marcus Bluestone" },
+  { image: `${P}/widetim.png`, name: "Maryna Bohdan" },
+  { image: `${P}/charisc.jpg`, name: "Charis Ching" },
+  { image: `${P}/widetim.png`, name: "Kara Chou" },
+  { image: `${P}/alexdang.jpg`, name: "Alex Dang" },
+  { image: `${P}/yiqingdu.jpeg`, name: "Yiqing Du" },
+  { image: `${P}/sanjd.jpg`, name: "Sanjana Duttagupta" },
+  { image: `${P}/gfarina.jpeg`, name: "Gabriele Farina" },
+  { image: `${P}/cge7.jpeg`, name: "Chris Ge" },
+  { image: `${P}/ernestog.png`, name: "Ernesto Gomez" },
+  { image: `${P}/chuang26.jpg`, name: "Christine Huang" },
+  { image: `${P}/cassidyj.png`, name: "Cassidy Jennings" },
+  { image: `${P}/akatorik.jpg`, name: "Tori Kelley" },
+  { image: `${P}/manoli.jpg`, name: "Manolis Kellis" },
+  { image: `${P}/kolic.png`, name: "Amir Kolic" },
+  { image: `${P}/kle.jpg`, name: "Kathryn Le" },
+  { image: `${P}/widetim.png`, name: "Michelle Li" },
+  { image: `${P}/minniejl.png`, name: "Minnie Liang" },
+  { image: `${P}/eve_lal.jpg`, name: "Evelyn Lianto" },
+  { image: `${P}/lilahl.jpg`, name: "Lilah Lindemann" },
+  { image: `${P}/luqiao.jpg`, name: "Luqiao Liu" },
+  { image: `${P}/calebmat.jpg`, name: "Caleb Mathewos" },
+  { image: `${P}/wojciech.jpg`, name: "Wojciech Matusik" },
+  { image: `${P}/monardo.jpeg`, name: "Vincent Monardo" },
+  { image: `${P}/wmowery.jpg`, name: "Wyatt Mowery" },
+  { image: `${P}/anhn.png`, name: "Anh Nguyen" },
+  { image: `${P}/enoriega.jpg`, name: "Eric Noriega" },
+  { image: `${P}/joycequ.jpg`, name: "Joyce Qu" },
+  { image: `${P}/muktha21.jpg`, name: "Muktha Ramesh" },
+  { image: `${P}/rafaelmr.jpg`, name: "Rafael Ribeiro" },
+  { image: `${P}/darivero.png`, name: "Diego Rivero" },
+  { image: `${P}/mardavij.jpg`, name: "Mardavij Roozbehani" },
+  { image: `${P}/brupesh.jpg`, name: "Bhadra Rupesh" },
+  { image: `${P}/dryu.jpg`, name: "DongHun Ryu" },
+  { image: `${P}/rshah2.jpeg`, name: "Rushil Shah" },
+  { image: `${P}/shenshen.jpeg`, name: "Shen Shen" },
+  { image: `${P}/jsong7.jpeg`, name: "Jonathan Song" },
+  { image: `${P}/inimai.jpg`, name: "Inimai Subramanian" },
+  { image: `${P}/mrsun.jpg`, name: "Maxwell Sun" },
+  { image: `${P}/sukrith.jpg`, name: "Sukrith Velmineti" },
+  { image: `${P}/alevol26.png`, name: "Alexandra Volkova" },
+  { image: `${P}/aimeew.jpeg`, name: "Aimee Wang" },
+  { image: `${P}/awang27.jpg`, name: "Annie Wang" },
+  { image: `${P}/gwang2.png`, name: "Grace Wang" },
+  { image: `${P}/josiexw.jpg`, name: "Josephine Wang" },
+  { image: `${P}/lw0328.jpeg`, name: "Lillian Wang" },
+  { image: `${P}/ashia07.png`, name: "Ashia Wilson" },
+  { image: `${P}/phoenixw.png`, name: "Phoenix Wu" },
+  { image: `${P}/elisaxia.jpeg`, name: "Elisa Xia" },
+  { image: `${P}/jjz300.jpg`, name: "Jocelyn Zhao" },
+  { image: `${P}/mirzhao.jpeg`, name: "Miranda Zhao" },
+  { image: `${P}/akzheng.png`, name: "Andy Zheng" },
 ];
+
+// Sort staff alphabetically by name
+staffMembers.sort((a, b) => a.name.localeCompare(b.name));
 
 // Parse subtitles
 const subtitles = parseSrt(srtContent);
@@ -144,24 +146,36 @@ const subtitles = parseSrt(srtContent);
 const TOTAL_DURATION_SECONDS = 90;
 const TOTAL_DURATION_FRAMES = secondsToFrames(TOTAL_DURATION_SECONDS);
 
+const styles: { id: string; style: AnimationStyle }[] = [
+  { id: "KaraokeVideo", style: "scroll" },
+  { id: "KaraokeVideo-scroll", style: "scroll" },
+  { id: "KaraokeVideo-kenburns", style: "kenburns" },
+  { id: "KaraokeVideo-polaroid", style: "polaroid" },
+  { id: "KaraokeVideo-grid", style: "grid" },
+];
+
 export const RemotionRoot: React.FC = () => {
   return (
     <>
-      <Composition
-        id="KaraokeVideo"
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        component={Video as any}
-        durationInFrames={TOTAL_DURATION_FRAMES}
-        fps={FPS}
-        width={WIDTH}
-        height={HEIGHT}
-        defaultProps={{
-          totalDurationInFrames: TOTAL_DURATION_FRAMES,
-          staffMembers,
-          subtitles,
-          audioFile: "audio.wav",
-        }}
-      />
+      {styles.map(({ id, style }) => (
+        <Composition
+          key={id}
+          id={id}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          component={Video as any}
+          durationInFrames={TOTAL_DURATION_FRAMES}
+          fps={FPS}
+          width={WIDTH}
+          height={HEIGHT}
+          defaultProps={{
+            totalDurationInFrames: TOTAL_DURATION_FRAMES,
+            staffMembers,
+            subtitles,
+            audioFile: "audio.wav",
+            animationStyle: style,
+          }}
+        />
+      ))}
     </>
   );
 };

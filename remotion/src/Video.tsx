@@ -2,14 +2,11 @@ import React from "react";
 import { Sequence, Audio, staticFile } from "remotion";
 import { LogoPhase } from "./components/LogoPhase";
 import { TransitionPhase } from "./components/TransitionPhase";
-import { ScrollingPhase } from "./components/ScrollingPhase";
-import { CreditsPhase } from "./components/CreditsPhase";
+import { ScrollingPhase, AnimationStyle } from "./components/ScrollingPhase";
 import {
   STATIC_FRAMES,
   TRANSITION_FRAMES,
   DYNAMIC_START_FRAME,
-  CREDITS_START_FRAME,
-  secondsToFrames,
 } from "./utils/constants";
 import type { Subtitle } from "./utils/parseSrt";
 import type { StaffMember } from "./Root";
@@ -19,6 +16,7 @@ export interface VideoProps {
   staffMembers: StaffMember[];
   subtitles: Subtitle[];
   audioFile?: string;
+  animationStyle?: AnimationStyle;
 }
 
 export const Video: React.FC<VideoProps> = ({
@@ -26,30 +24,25 @@ export const Video: React.FC<VideoProps> = ({
   staffMembers,
   subtitles,
   audioFile,
+  animationStyle = "scroll",
 }) => {
-  const scrollingDurationFrames = CREDITS_START_FRAME - DYNAMIC_START_FRAME;
-  const creditsDurationFrames = totalDurationInFrames - CREDITS_START_FRAME;
+  const scrollingDurationFrames = totalDurationInFrames - DYNAMIC_START_FRAME;
 
   return (
     <>
       {/* Static logo phase: 0 - 6.5 seconds */}
       <Sequence from={0} durationInFrames={STATIC_FRAMES}>
-        <LogoPhase />
+        <LogoPhase animationStyle={animationStyle} />
       </Sequence>
 
       {/* Transition phase: 6.5 - 10 seconds */}
       <Sequence from={STATIC_FRAMES} durationInFrames={TRANSITION_FRAMES}>
-        <TransitionPhase staffMembers={staffMembers} subtitles={subtitles} />
+        <TransitionPhase staffMembers={staffMembers} subtitles={subtitles} animationStyle={animationStyle} />
       </Sequence>
 
-      {/* Scrolling phase: 10 - 86 seconds */}
+      {/* Staff photos phase: 10 seconds to end */}
       <Sequence from={DYNAMIC_START_FRAME} durationInFrames={scrollingDurationFrames}>
-        <ScrollingPhase staffMembers={staffMembers} subtitles={subtitles} />
-      </Sequence>
-
-      {/* Credits phase: 86 seconds onwards */}
-      <Sequence from={CREDITS_START_FRAME} durationInFrames={creditsDurationFrames}>
-        <CreditsPhase />
+        <ScrollingPhase staffMembers={staffMembers} subtitles={subtitles} animationStyle={animationStyle} />
       </Sequence>
 
       {/* Audio track */}
